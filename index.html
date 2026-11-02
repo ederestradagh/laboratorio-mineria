@@ -1,0 +1,1371 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minería Avanzada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: editor del bloque y consola de minería a la izquierda, panel del minero fijo a la derecha; una columna en móvil */
+:root {
+  --paper: #EDF0F5;
+  --sheet: #FBFCFE;
+  --ink: #172031;
+  --ink-soft: #586377;
+  --rule: #D3D9E3;
+  --hash-bg: #EEF1F7;
+  --accent: #2747B8;
+  --accent-soft: #E2E7FA;
+  --on-accent: #FFFFFF;
+  --ok: #1B7448;
+  --ok-bg: #DEF1E6;
+  --warn: #8E5300;
+  --warn-bg: #FAEDD5;
+  --bad: #B42318;
+  --bad-bg: #FBE3E0;
+  --console: #141A26;
+  --console-ink: #C9D2E3;
+  --console-dim: #6F7B92;
+  --console-zero: #5FD394;
+  --console-miss: #FF8E84;
+  --scrim: rgba(16, 22, 34, 0.55);
+  --font-display: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F131B; --sheet: #161C27; --ink: #E6EAF1; --ink-soft: #9CA6B7; --rule: #2A3243; --hash-bg: #1D2432;
+    --accent: #93A9FF; --accent-soft: #212B4A; --on-accent: #0C1224;
+    --ok: #62C995; --ok-bg: #13301F; --warn: #EFB45E; --warn-bg: #33270F; --bad: #FF8E84; --bad-bg: #3B1815;
+    --console: #0A0E15; --console-ink: #C9D2E3; --console-dim: #66728A; --console-zero: #62D99A; --console-miss: #FF8E84; --scrim: rgba(0, 0, 0, 0.65);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F131B; --sheet: #161C27; --ink: #E6EAF1; --ink-soft: #9CA6B7; --rule: #2A3243; --hash-bg: #1D2432;
+  --accent: #93A9FF; --accent-soft: #212B4A; --on-accent: #0C1224;
+  --ok: #62C995; --ok-bg: #13301F; --warn: #EFB45E; --warn-bg: #33270F; --bad: #FF8E84; --bad-bg: #3B1815;
+  --console: #0A0E15; --console-ink: #C9D2E3; --console-dim: #66728A; --console-zero: #62D99A; --console-miss: #FF8E84; --scrim: rgba(0, 0, 0, 0.65);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 56px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 28px; }
+.intro { display: grid; gap: 10px; max-width: 72ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.05; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.intro p { margin: 0; color: var(--ink-soft); font-size: 1.05rem; }
+.formula {
+  font-family: var(--font-mono); font-size: 13px; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule);
+  border-radius: 6px; padding: 8px 12px; justify-self: start; max-width: 100%; overflow-x: auto; white-space: nowrap;
+}
+.formula b { color: var(--accent); font-weight: 600; }
+
+.layout { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr) 330px; align-items: start; }
+.main { display: grid; gap: 24px; min-width: 0; }
+.side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); min-width: 0; display: grid; gap: 16px; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .side { position: static; } }
+
+h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.label {
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft);
+  font-weight: 500; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.hash {
+  display: block; font-family: var(--font-mono); font-size: 13px; line-height: 1.55; word-break: break-all;
+  background: var(--hash-bg); border-radius: 4px; padding: 7px 10px; color: var(--ink);
+}
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.step { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.pill { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; white-space: nowrap; background: var(--accent-soft); color: var(--accent); }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.field { display: grid; gap: 6px; min-width: 0; }
+.muted { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+
+.ops { display: grid; gap: 8px; }
+fieldset.op-edit {
+  border: 1px solid var(--rule); border-radius: 6px; margin: 0; padding: 8px 12px 12px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 8rem); gap: 8px; min-width: 0;
+}
+fieldset.op-edit legend { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft); padding: 0 4px; }
+.f { display: grid; gap: 4px; min-width: 0; }
+@media (max-width: 520px) { fieldset.op-edit { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .f-monto { grid-column: 1 / -1; } }
+.inp { width: 100%; font: inherit; font-size: 15px; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.inp:disabled { opacity: 0.7; }
+
+
+.row-end { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.msg { margin: 0; font-size: 14px; color: var(--ink-soft); flex: 1 1 240px; }
+.msg.ready { color: var(--ok); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  font: inherit; font-weight: 600; font-size: 14.5px; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent); white-space: nowrap;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.08); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.on { background: var(--warn); border-color: var(--warn); color: var(--sheet); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: var(--sheet); }
+
+/* Consola de minería */
+.console { background: var(--console); color: var(--console-ink); border-radius: 8px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.console .label { color: var(--console-dim); }
+.big-hash { font-family: var(--font-mono); font-size: clamp(14px, 2.2vw, 17px); line-height: 1.5; word-break: break-all; font-variant-numeric: tabular-nums; }
+.z { color: var(--console-zero); font-weight: 600; }
+.miss { color: var(--console-miss); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.target { font-family: var(--font-mono); font-size: 13px; color: var(--console-dim); }
+.target b { color: var(--console-zero); font-weight: 600; }
+.nonce-big { font-family: var(--font-mono); font-size: clamp(26px, 5vw, 38px); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--console-ink); }
+.top-row { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { display: grid; gap: 2px; border-top: 1px solid rgba(127, 140, 165, 0.25); padding-top: 8px; min-width: 0; }
+.stat b { font-family: var(--font-mono); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat span { font-size: 12px; color: var(--console-dim); }
+.luck { margin: 0; font-size: 13.5px; color: var(--console-ink); opacity: 0.85; }
+.log { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; display: grid; min-width: 0; border-top: 1px solid rgba(127, 140, 165, 0.25); padding-top: 8px; height: calc(12 * 1.7em + 8px); overflow: hidden; }
+.log div { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 12px; min-width: 0; }
+.log .n { text-align: right; color: var(--console-dim); font-variant-numeric: tabular-nums; }
+.log .hx { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log div:first-child .hx { color: #FFFFFF; }
+.console-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.console .btn.ghost { color: var(--console-ink); border-color: rgba(127, 140, 165, 0.5); }
+.idle-note { margin: 0; color: var(--console-dim); font-size: 14.5px; }
+
+.found { border: 1.5px solid var(--ok); background: var(--ok-bg); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; }
+.found h3 { margin: 0; font-family: var(--font-display); font-size: 1.2rem; color: var(--ok); }
+.found p { margin: 0; font-size: 15px; }
+.found .hash { background: var(--sheet); }
+
+/* Cadena guardada */
+.chain { display: grid; gap: 10px; }
+.saved { border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; background: var(--paper); min-width: 0; }
+.saved-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.saved-head h3 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; }
+.saved-meta { font-size: 13.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.saved .hash { background: var(--sheet); font-size: 12.5px; }
+.zz { color: var(--ok); font-weight: 600; }
+.verify-out { margin: 0; font-size: 13.5px; color: var(--ok); }
+.saved .row-end .btn { padding: 6px 12px; font-size: 13.5px; }
+
+/* Panel */
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; display: grid; gap: 14px; }
+.status-word { font-family: var(--font-display); font-weight: 800; font-size: 1.55rem; line-height: 1.1; letter-spacing: -0.02em; margin: 0; }
+.panel[data-state="mining"] .status-word { color: var(--warn); }
+.panel[data-state="found"] .status-word { color: var(--ok); }
+.status-text { margin: 0; font-size: 15px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+th { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; }
+td.mono { font-family: var(--font-mono); }
+tr.sel td { background: var(--accent-soft); font-weight: 600; }
+.fact { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+.fact strong { color: var(--ink); }
+.store-note { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
+
+
+/* Seguimiento de los 4 bloques */
+.tracker { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .tracker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.trk { background: var(--sheet); border: 1.5px solid var(--rule); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.trk-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.trk-n { font-weight: 700; font-size: 15px; }
+.trk-ico { font-weight: 700; color: var(--ok); }
+.trk-z { font-family: var(--font-mono); font-weight: 600; font-size: 20px; letter-spacing: 0.04em; color: var(--ink-soft); }
+.trk-sub { font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.trk[data-state="current"] { border-color: var(--accent); background: var(--accent-soft); }
+.trk[data-state="current"] .trk-z { color: var(--accent); }
+.trk[data-state="mining"] { border-color: var(--warn); background: var(--warn-bg); }
+.trk[data-state="mining"] .trk-z { color: var(--warn); }
+.trk[data-state="done"] { border-color: var(--ok); }
+.trk[data-state="done"] .trk-z { color: var(--ok); }
+.trk[data-state="pending"] { opacity: 0.7; }
+
+.req { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; background: var(--accent-soft); border-radius: 8px; padding: 12px 14px; }
+.req-z { font-family: var(--font-mono); font-weight: 600; font-size: 24px; color: var(--accent); letter-spacing: 0.05em; }
+.req-text { font-size: 14.5px; }
+.live-grid { display: grid; gap: 14px; }
+.stack { display: grid; gap: 4px; }
+.table-wrap { overflow-x: auto; }
+.sum { min-width: 440px; font-size: 14px; }
+.sum td, .sum th { padding: 8px 6px; }
+.done-card { border-color: var(--ok); }
+.btn.wide { width: 100%; }
+.hint { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.verify-out.bad { color: var(--bad); }
+
+/* Ventana del informe */
+.modal-back {
+  position: fixed; inset: 0; z-index: 50; background: var(--scrim); display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.modal { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 10px; width: min(460px, 100%); padding: 22px; display: grid; gap: 12px; box-shadow: 0 24px 60px var(--scrim); }
+.modal > p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+.modal-form { display: grid; gap: 8px; }
+.form-msg { margin: 0; font-size: 14px; min-height: 1.4em; color: var(--ink-soft); }
+.form-msg.err { color: var(--bad); }
+.form-msg.ok { color: var(--ok); }
+.btns.end { justify-content: flex-end; }
+
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="intro">
+    <span class="eyebrow">Prueba de trabajo · versión avanzada</span>
+    <h1>Minería Avanzada</h1>
+    <p>Registra cuatro bloques que exigen 3, 4, 5 y 6 ceros. Para guardar cada uno tienes que minarlo: encontrar un nonce que haga que su hash empiece con esos ceros. El minero prueba hasta 40 000 hashes por segundo, según lo que permita tu equipo. Al final, genera tu informe en PDF.</p>
+    <code class="formula">hash = SHA-256( número | fecha y hora | hash anterior | operación 1 | operación 2 | <b>nonce</b> )</code>
+  </header>
+
+  <ol class="tracker" id="tracker" aria-label="Progreso de los cuatro bloques"></ol>
+
+  <div class="layout">
+    <div class="main">
+      <section class="card done-card" id="done-card" aria-labelledby="done-title" hidden>
+        <div class="card-head">
+          <div><span class="step">Cadena completa</span><h2 id="done-title">Minaste los 4 bloques</h2></div>
+          <span class="pill ok">Terminado</span>
+        </div>
+        <p class="muted" id="done-text"></p>
+        <div class="table-wrap">
+          <table class="sum">
+            <thead><tr><th>Bloque</th><th>Ceros</th><th>Intentos</th><th>Promedio esperado</th><th>Tiempo</th></tr></thead>
+            <tbody id="done-rows"></tbody>
+          </table>
+        </div>
+        <div class="btns"><button class="btn" type="button" id="btn-report-main">Crear informe en PDF</button></div>
+      </section>
+
+      <section class="card" id="edit-card" aria-labelledby="edit-title">
+        <div class="card-head">
+          <div><span class="step">Paso 1</span><h2 id="edit-title">Registra el bloque <span id="edit-num"></span></h2></div>
+          <span class="pill" id="edit-pill">Borrador</span>
+        </div>
+        <div class="req" id="req"></div>
+        <div class="field">
+          <span class="label">Hash anterior · último bloque registrado en la cadena</span>
+          <code class="hash" id="edit-prev"></code>
+        </div>
+        <div class="ops" id="ops"></div>
+        <div class="row-end">
+          <p class="msg" id="edit-msg" aria-live="polite"></p>
+          <div class="btns">
+            <button class="btn ghost" type="button" id="btn-example">Usar ejemplo</button>
+            <button class="btn" type="button" id="btn-mine">Minar y registrar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="mine-card" aria-labelledby="mine-title">
+        <div class="card-head">
+          <div><span class="step">Paso 2</span><h2 id="mine-title">Minería</h2></div>
+          <span class="pill" id="mine-pill">En espera</span>
+        </div>
+        <div class="console" id="console">
+          <p class="idle-note" id="idle-note"></p>
+          <div id="live" hidden>
+            <div class="live-grid">
+              <div class="top-row">
+                <div class="stack">
+                  <span class="label">Nonce que se está probando</span>
+                  <span class="nonce-big" id="nonce-big">0</span>
+                </div>
+                <span class="target" id="target"></span>
+              </div>
+              <div class="stack">
+                <span class="label">Hash de este intento</span>
+                <div class="big-hash" id="big-hash"></div>
+              </div>
+              <div class="stats">
+                <div class="stat"><b id="st-attempts">0</b><span>intentos</span></div>
+                <div class="stat"><b id="st-time">0,00 s</b><span>tiempo</span></div>
+                <div class="stat"><b id="st-rate">0</b><span>hashes por segundo</span></div>
+                <div class="stat"><b id="st-expected">0</b><span>intentos en promedio</span></div>
+                <div class="stat"><b id="st-best">—</b><span>mejor hash hasta ahora</span></div>
+                <div class="stat"><b id="st-prob">0 %</b><span>prob. de haberlo hallado ya</span></div>
+              </div>
+              <p class="luck" id="luck"></p>
+              <div class="stack">
+                <span class="label">Últimos intentos</span>
+                <div class="log" id="log" aria-hidden="true"></div>
+              </div>
+              <div class="console-btns">
+                <button class="btn ghost" type="button" id="btn-pause">Pausar</button>
+                <button class="btn ghost" type="button" id="btn-unlimited" aria-pressed="false">Quitar límite</button>
+                <button class="btn ghost" type="button" id="btn-cancel">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="found" id="found" hidden aria-live="polite">
+          <h3 id="found-title"></h3>
+          <p id="found-text"></p>
+          <code class="hash" id="found-hash"></code>
+          <div class="btns"><button class="btn" type="button" id="btn-next"></button></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="chain-title">
+        <div class="card-head">
+          <div><span class="step">Paso 3</span><h2 id="chain-title">Cadena registrada</h2></div>
+          <span class="pill ok" id="chain-pill"></span>
+        </div>
+        <p class="muted">Solo entran a la cadena los bloques minados. Verificar un bloque toma un solo cálculo, aunque minarlo haya tomado miles.</p>
+        <div class="chain" id="chain"></div>
+      </section>
+    </div>
+
+    <aside class="side" aria-label="Panel del minero">
+      <div class="panel" id="panel" data-state="idle">
+        <span class="label">Panel del minero</span>
+        <p class="status-word" id="status-word"></p>
+        <p class="status-text" id="status-text"></p>
+        <button class="btn wide" type="button" id="btn-report" disabled>Crear informe en PDF</button>
+        <p class="hint" id="report-hint">Se habilita al registrar los 4 bloques.</p>
+      </div>
+      <div class="panel">
+        <span class="label">Cada cero multiplica el trabajo por 16</span>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Bloque</th><th>Ceros</th><th>Promedio</th><th>Real</th></tr></thead>
+            <tbody id="growth"></tbody>
+          </table>
+        </div>
+        <p class="fact" id="rate-fact"></p>
+        <p class="fact">En Bitcoin real se piden <strong>alrededor de 19 ceros</strong>, y una sola máquina de minería prueba unos <strong>200 billones de hashes por segundo</strong> (cifras aproximadas).</p>
+      </div>
+      <div class="panel">
+        <button class="btn ghost wide" type="button" id="btn-reset">Borrar cadena y empezar de nuevo</button>
+        <p class="store-note" id="store-note" hidden>Tu avance se guarda en este navegador.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="modal-back" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
+    <h2 id="modal-title">Crear informe en PDF</h2>
+    <p id="modal-desc">El PDF incluirá tus 4 bloques minados, sus hashes, nonces, intentos, tiempos de minería y una comparación de la dificultad. Escribe tu nombre tal como debe aparecer en el documento.</p>
+    <form id="report-form" class="modal-form" novalidate>
+      <label class="label" for="student-name">Nombre completo del estudiante</label>
+      <input id="student-name" class="inp" type="text" maxlength="80" autocomplete="name" spellcheck="false">
+      <p class="form-msg" id="form-msg" aria-live="polite"></p>
+      <div class="btns end">
+        <button type="button" class="btn ghost" id="modal-cancel">Cancelar</button>
+        <button type="submit" class="btn" id="modal-ok">Generar PDF</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+const K = new Uint32Array([
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+]);
+const encoder = new TextEncoder();
+function sha256(str) {
+  const msg = encoder.encode(str);
+  const len = msg.length;
+  const total = Math.ceil((len + 9) / 64) * 64;
+  const buf = new Uint8Array(total);
+  buf.set(msg);
+  buf[len] = 0x80;
+  const dv = new DataView(buf.buffer);
+  const bits = len * 8;
+  dv.setUint32(total - 8, Math.floor(bits / 0x100000000));
+  dv.setUint32(total - 4, bits >>> 0);
+  const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w = new Uint32Array(64);
+  for (let off = 0; off < total; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const x = w[i - 15], y = w[i - 2];
+      const s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+      const s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+  }
+  return H.map(v => v.toString(16).padStart(8, "0")).join("");
+}
+
+/* ---------- Configuración ---------- */
+const RATE = 40000;                // límite de hashes por segundo del minero
+const PLAN = [3, 4, 5, 6];         // ceros exigidos a los bloques #1, #2, #3 y #4
+const KEY = "mineria-avanzada-v1";
+const NAME_KEY = "mineria-avanzada-nombre";
+const ZERO = "0".repeat(64);
+const GENESIS = {
+  n: 0, ts: "01/11/2026 00:00:00", prev: ZERO,
+  ops: [{ de: "Red", para: "Ana", monto: "50" }, { de: "Red", para: "Juan", monto: "50" }],
+  nonce: 23712, hash: "0000deea0f9f3b5428b9d96b3027ac4c2d16a29fe96c880625e4a92907a37d4d",
+  zeros: 4, genesis: true
+};
+const EXAMPLES = [
+  [["Ana", "Juan", "10"], ["Juan", "María", "4"]],
+  [["María", "Luis", "2"], ["Ana", "Rosa", "5"]],
+  [["Rosa", "Juan", "1.5"], ["Luis", "Ana", "1"]],
+  [["Juan", "Rosa", "3"], ["María", "Ana", "0.5"]]
+];
+const FIELDS = ["de", "para", "monto"];
+const FIELD_LABEL = { de: "De", para: "Para", monto: "Monto (BTC)" };
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const smooth = () => (reduceMotion ? "auto" : "smooth");
+
+/* ---------- Utilidades ---------- */
+const pad = n => String(n).padStart(2, "0");
+function formatNow() {
+  const d = new Date();
+  return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00A0");
+const dec = (x, d) => x.toFixed(d).replace(".", ",");
+function fmtDur(sec) {
+  if (sec < 10) return dec(sec, 2) + " s";
+  if (sec < 60) return dec(sec, 1) + " s";
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  if (m < 60) return m + " min " + pad(s) + " s";
+  return Math.floor(m / 60) + " h " + pad(m % 60) + " min";
+}
+function approxTime(sec) {
+  if (sec < 1) return "menos de 1 s";
+  if (sec < 60) return "≈ " + Math.round(sec) + " s";
+  if (sec < 3600) return "≈ " + (sec / 60 < 10 ? dec(sec / 60, 1) : Math.round(sec / 60)) + " min";
+  if (sec < 172800) return "≈ " + dec(sec / 3600, 1) + " h";
+  return "≈ " + fmt(sec / 86400) + " días";
+}
+const opText = o => o.de + "->" + o.para + ":" + o.monto;
+const blockInput = (b, nonce) => [String(b.n), b.ts, b.prev].concat(b.ops.map(opText)).concat([String(nonce)]).join("|");
+function leadingZeros(hx) { let k = 0; while (k < hx.length && hx[k] === "0") k++; return k; }
+const expectedFor = z => Math.pow(16, z);
+
+function h(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) { if (c == null || c === false) continue; n.append(c.nodeType ? c : document.createTextNode(String(c))); }
+  return n;
+}
+function zeroHashNodes(hx, need, zerosClass, missClass) {
+  const z = Math.min(leadingZeros(hx), need);
+  const out = [];
+  if (z) out.push(h("span", { class: zerosClass, text: hx.slice(0, z) }));
+  if (z < need && missClass && hx[z]) {
+    out.push(h("span", { class: missClass, text: hx[z] }));
+    out.push(document.createTextNode(hx.slice(z + 1)));
+  } else out.push(document.createTextNode(hx.slice(z)));
+  return out;
+}
+
+/* ---------- Estado ---------- */
+function validChain(c) {
+  return Array.isArray(c) && c.length >= 1 && c.length <= PLAN.length + 1 && c[0].hash === GENESIS.hash &&
+    c.every(b => b && typeof b.hash === "string" && typeof b.ts === "string" && typeof b.prev === "string" &&
+      Array.isArray(b.ops) && b.ops.length === 2 && typeof b.nonce === "number" && typeof b.zeros === "number");
+}
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (s && validChain(s.chain)) return s;
+  } catch (e) { /* sin almacenamiento */ }
+  return null;
+}
+let storageOK = false;
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ chain: state.chain })); storageOK = true; }
+  catch (e) { storageOK = false; }
+  el("store-note").hidden = !storageOK;
+}
+const el = id => document.getElementById(id);
+const saved = load();
+const state = {
+  chain: saved ? saved.chain : [GENESIS],
+  phase: "edit",            // edit | mining | found | done
+  draft: emptyDraft(),
+  mining: null
+};
+function emptyDraft() { return { ops: [{ de: "", para: "", monto: "" }, { de: "", para: "", monto: "" }] }; }
+const lastBlock = () => state.chain[state.chain.length - 1];
+const minedBlocks = () => state.chain.filter(b => !b.genesis);
+const nextIndex = () => state.chain.length;               // número del bloque a registrar (1..4)
+const isComplete = () => minedBlocks().length >= PLAN.length;
+const zerosFor = n => PLAN[n - 1];
+if (isComplete()) state.phase = "done";
+
+/* ---------- Seguimiento de los 4 bloques ---------- */
+function renderTracker() {
+  const box = el("tracker");
+  box.textContent = "";
+  PLAN.forEach((z, k) => {
+    const n = k + 1;
+    const b = state.chain[n];
+    let st = "pending";
+    if (b) st = "done";
+    else if (n === nextIndex()) st = state.phase === "mining" ? "mining" : "current";
+    const sub = b ? fmt(b.attempts) + " intentos · " + fmtDur(b.seconds)
+      : st === "mining" ? "Minando…" : st === "current" ? "Siguiente" : "Pendiente";
+    box.append(h("li", { class: "trk", "data-state": st },
+      h("span", { class: "trk-top" }, h("span", { class: "trk-n", text: "Bloque #" + n }), h("span", { class: "trk-ico", text: b ? "✓" : "" })),
+      h("span", { class: "trk-z", text: "0".repeat(z) }),
+      h("span", { class: "trk-sub", text: z + " ceros · " + sub })));
+  });
+}
+
+/* ---------- Editor del bloque ---------- */
+const opsBox = el("ops");
+const inputs = {};
+function buildOps() {
+  opsBox.textContent = "";
+  state.draft.ops.forEach((o, k) => {
+    const fs = h("fieldset", { class: "op-edit" }, h("legend", { text: "Operación " + (k + 1) }));
+    FIELDS.forEach(f => {
+      const id = "op" + k + "-" + f;
+      const isAmt = f === "monto";
+      const inp = h("input", {
+        id, class: "inp", value: o[f], autocomplete: "off", spellcheck: "false",
+        type: isAmt ? "number" : "text", step: isAmt ? "any" : null, min: isAmt ? "0" : null, inputmode: isAmt ? "decimal" : null,
+        maxlength: isAmt ? null : "30"
+      });
+      inp.addEventListener("input", () => { o[f] = inp.value; refreshEditor(); });
+      inp.addEventListener("keydown", ev => { if (ev.key === "Enter" && !opsError()) startMining(); });
+      inputs[k + f] = inp;
+      fs.append(h("div", { class: "f f-" + f }, h("label", { class: "label", for: id, text: FIELD_LABEL[f] }), inp));
+    });
+    opsBox.append(fs);
+  });
+}
+function opsError() {
+  for (let k = 0; k < 2; k++) {
+    const o = state.draft.ops[k], L = "Operación " + (k + 1) + ": ";
+    if (!o.de.trim()) return L + "escribe quién envía.";
+    if (!o.para.trim()) return L + "escribe quién recibe.";
+    if (o.de.trim().toLowerCase() === o.para.trim().toLowerCase()) return L + "quien envía y quien recibe deben ser distintos.";
+    const m = Number(o.monto);
+    if (String(o.monto).trim() === "" || !isFinite(m) || m <= 0) return L + "escribe un monto mayor que 0.";
+  }
+  return "";
+}
+function refreshEditor() {
+  const done = state.phase === "done";
+  el("edit-card").hidden = done;
+  el("done-card").hidden = !done;
+  if (done) { renderDone(); return; }
+  const n = nextIndex();
+  const z = zerosFor(n);
+  const editing = state.phase === "edit";
+  el("edit-num").textContent = "#" + n;
+  el("edit-prev").textContent = lastBlock().hash;
+  const pill = el("edit-pill");
+  pill.textContent = editing ? "Borrador" : state.phase === "mining" ? "Minando" : "Registrado";
+  pill.className = "pill" + (state.phase === "mining" ? " warn" : state.phase === "found" ? " ok" : "");
+  const req = el("req");
+  req.textContent = "";
+  req.append(
+    h("span", { class: "req-z", text: "0".repeat(z) }),
+    h("span", { class: "req-text" },
+      h("strong", { text: "Para registrarlo, su hash debe empezar con " + z + " ceros." }),
+      " En promedio se necesitan " + fmt(expectedFor(z)) + " intentos: " + approxTime(expectedFor(z) / RATE).replace("≈ ", "unos ") + " a la velocidad del minero."));
+  Object.values(inputs).forEach(inp => { inp.disabled = !editing; });
+  const err = opsError();
+  const blank = state.draft.ops.every(o => !o.de && !o.para && !o.monto);
+  const btn = el("btn-mine");
+  btn.textContent = "Minar y registrar el bloque #" + n;
+  btn.disabled = !editing || !!err;
+  el("btn-example").disabled = !editing;
+  const msg = el("edit-msg");
+  msg.classList.toggle("ready", editing && !err);
+  msg.textContent = !editing ? (state.phase === "mining" ? "El bloque está bloqueado mientras se mina." : "Bloque registrado en la cadena.")
+    : err ? (blank ? "Completa las dos operaciones para poder minar el bloque." : err)
+    : "Listo. Al pulsar el botón se registra la fecha y hora y empieza la minería.";
+}
+el("btn-example").addEventListener("click", () => {
+  const ex = EXAMPLES[(nextIndex() - 1) % EXAMPLES.length];
+  ex.forEach((row, k) => FIELDS.forEach((f, fi) => { state.draft.ops[k][f] = row[fi]; inputs[k + f].value = row[fi]; }));
+  refreshEditor();
+});
+
+/* ---------- Minería (en un proceso aparte para que la página no se congele) ---------- */
+const logBox = el("log");
+const IDLE_TEXT = "Cuando pulses «Minar y registrar», el minero empezará a probar nonces: 0, 1, 2, 3… Cada intento produce un hash totalmente distinto, hasta que uno empiece con los ceros pedidos.";
+
+// Núcleo del minero: se ejecuta dentro de un Web Worker (o en la página si el navegador no lo permite).
+function createMinerCore(post) {
+  let job = null, timer = null, lastPost = 0;
+  function snapshot(type, extra) {
+    const msg = { type: type, attempts: job.attempts, nonce: job.nonce, current: job.current, log: job.log.slice(), best: job.best, elapsed: job.elapsed };
+    if (extra) for (const k in extra) msg[k] = extra[k];
+    return msg;
+  }
+  function step() {
+    timer = null;
+    if (!job || job.paused) return;
+    const now = performance.now();
+    const dt = Math.min((now - job.last) / 1000, 1.1);
+    job.last = now;
+    job.elapsed += dt;
+    if (!job.unlimited) job.budget = Math.min(job.budget + job.rate * dt, job.rate * 0.25);
+    let found = null, k = 0;
+    while (job.unlimited || job.budget >= 1) {
+      const hx = sha256(job.prefix + "|" + job.nonce);
+      job.attempts++; k++;
+      job.current = hx;
+      job.log.push([job.nonce, hx]);
+      if (job.log.length > 12) job.log.shift();
+      const z = leadingZeros(hx);
+      if (!job.best || z > job.best.z || (z === job.best.z && hx < job.best.hx)) job.best = { z: z, hx: hx };
+      if (z >= job.zeros) { found = { nonce: job.nonce, hash: hx }; break; }
+      job.nonce++;
+      if (!job.unlimited) job.budget--;
+      if ((k & 255) === 0 && performance.now() - now > 45) break;
+    }
+    const end = performance.now();
+    if (found) {
+      job.elapsed += (end - job.last) / 1000;
+      const msg = snapshot("found", { found: found });
+      job = null;
+      post(msg);
+      return;
+    }
+    if (end - lastPost > 80) { lastPost = end; post(snapshot("progress")); }
+    timer = setTimeout(step, job.unlimited ? 0 : 15);
+  }
+  return function handle(msg) {
+    if (msg.type === "start") {
+      if (timer) clearTimeout(timer);
+      job = { prefix: msg.prefix, zeros: msg.zeros, rate: msg.rate, unlimited: false, paused: false, nonce: 0, attempts: 0,
+        elapsed: 0, budget: 0, last: performance.now(), current: "", log: [], best: null };
+      lastPost = 0;
+      timer = setTimeout(step, 15);
+      return;
+    }
+    if (!job) return;
+    if (msg.type === "pause") {
+      const now = performance.now();
+      if (msg.value && !job.paused) { job.elapsed += Math.min((now - job.last) / 1000, 1.1); }
+      job.paused = msg.value;
+      job.last = now;
+      if (!job.paused && !timer) timer = setTimeout(step, 0);
+    } else if (msg.type === "unlimited") {
+      job.unlimited = msg.value;
+      job.budget = 0;
+    } else if (msg.type === "cancel") {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      job = null;
+    }
+  };
+}
+
+function createMiner(onMsg) {
+  let lastStart = null, gotMessage = false, inline = null;
+  function useInline() {
+    const core = createMinerCore(m => setTimeout(() => onMsg(m), 0));
+    inline = { send: m => core(m), kind: "inline" };
+    return inline;
+  }
+  try {
+    const src = "const K = new Uint32Array(" + JSON.stringify(Array.from(K)) + ");\nconst encoder = new TextEncoder();\n" +
+      sha256.toString() + "\n" + leadingZeros.toString() + "\n" + createMinerCore.toString() +
+      "\nconst core = createMinerCore(function (m) { postMessage(m); });\nonmessage = function (e) { core(e.data); };\n";
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    const w = new Worker(url);
+    const api = {
+      kind: "worker",
+      send(m) {
+        if (inline) return inline.send(m);
+        if (m.type === "start") lastStart = m;
+        w.postMessage(m);
+      }
+    };
+    w.onmessage = e => { gotMessage = true; onMsg(e.data); };
+    w.onerror = ev => {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (!gotMessage && !inline) {
+        useInline();
+        if (lastStart) inline.send(lastStart);
+      }
+    };
+    return api;
+  } catch (e) {
+    return useInline();
+  }
+}
+
+let miner = null;
+function sendMiner(m) { if (miner) miner.send(m); }
+
+function startMining() {
+  if (state.phase !== "edit" || opsError() || isComplete()) return;
+  const prev = lastBlock();
+  const n = nextIndex();
+  const z = zerosFor(n);
+  const block = {
+    n, ts: formatNow(), prev: prev.hash,
+    ops: state.draft.ops.map(o => ({ de: o.de.trim(), para: o.para.trim(), monto: String(Number(o.monto)) }))
+  };
+  state.mining = {
+    block, zeros: z, target: "0".repeat(z), expected: expectedFor(z),
+    attempts: 0, elapsed: 0, paused: false, unlimited: false, unlimitedUsed: false,
+    current: "", best: null, log: [], rateSamples: []
+  };
+  state.phase = "mining";
+  el("idle-note").hidden = true;
+  el("live").hidden = false;
+  el("found").hidden = true;
+  el("btn-pause").textContent = "Pausar";
+  document.querySelectorAll(".console-btns .btn").forEach(b => { b.disabled = false; });
+  setUnlimited(false);
+  const t = el("target"); t.textContent = "";
+  t.append("Objetivo: el hash debe empezar con ", h("b", { text: state.mining.target }));
+  el("st-expected").textContent = fmt(state.mining.expected);
+  el("nonce-big").textContent = "0";
+  el("big-hash").textContent = "";
+  logBox.textContent = "";
+  el("mine-pill").textContent = "Minando";
+  el("mine-pill").className = "pill warn";
+  refreshEditor(); renderTracker(); renderPanel();
+  if (!miner) miner = createMiner(onMinerMsg);
+  const prefix = [String(block.n), block.ts, block.prev].concat(block.ops.map(opText)).join("|");
+  sendMiner({ type: "start", prefix, zeros: z, rate: RATE });
+  el("mine-card").scrollIntoView({ behavior: smooth(), block: "start" });
+}
+el("btn-mine").addEventListener("click", startMining);
+
+function setUnlimited(on, notify) {
+  const m = state.mining;
+  if (m) { m.unlimited = on; if (on) m.unlimitedUsed = true; m.rateSamples = []; }
+  if (notify) sendMiner({ type: "unlimited", value: on });
+  const b = el("btn-unlimited");
+  b.classList.toggle("on", on);
+  b.setAttribute("aria-pressed", on ? "true" : "false");
+  b.textContent = on ? "Sin límite activado" : "Quitar límite";
+}
+el("btn-unlimited").addEventListener("click", () => { if (state.mining) setUnlimited(!state.mining.unlimited, true); renderPanel(); });
+el("btn-pause").addEventListener("click", () => {
+  const m = state.mining; if (!m) return;
+  m.paused = !m.paused;
+  m.rateSamples = [];
+  sendMiner({ type: "pause", value: m.paused });
+  el("btn-pause").textContent = m.paused ? "Continuar" : "Pausar";
+  renderPanel();
+  renderLive();
+});
+el("btn-cancel").addEventListener("click", () => {
+  if (!state.mining) return;
+  sendMiner({ type: "cancel" });
+  state.mining = null;
+  state.phase = "edit";
+  el("live").hidden = true;
+  el("idle-note").hidden = false;
+  el("idle-note").textContent = "Minería cancelada. El bloque no se registró. Puedes revisar los datos y volver a minar.";
+  el("mine-pill").textContent = "En espera"; el("mine-pill").className = "pill";
+  refreshEditor(); renderTracker(); renderPanel();
+});
+
+function onMinerMsg(msg) {
+  const m = state.mining;
+  if (!m || state.phase !== "mining") return;
+  m.attempts = msg.attempts;
+  m.current = msg.current;
+  m.log = msg.log.slice().reverse();
+  m.best = msg.best;
+  m.elapsed = msg.elapsed;
+  const now = performance.now();
+  m.rateSamples.push([now, msg.attempts]);
+  while (m.rateSamples.length > 2 && now - m.rateSamples[0][0] > 2500) m.rateSamples.shift();
+  renderLive();
+  if (msg.type === "found") finishMining(msg.found);
+}
+
+function currentRate(m) {
+  const rs = m.rateSamples;
+  const span = rs.length > 1 ? (rs[rs.length - 1][0] - rs[0][0]) / 1000 : 0;
+  return span > 0.5 ? (rs[rs.length - 1][1] - rs[0][1]) / span : null;
+}
+
+function renderLive() {
+  const m = state.mining;
+  if (!m || !m.current) return;
+  el("nonce-big").textContent = fmt(m.log.length ? m.log[0][0] : 0);
+  const big = el("big-hash");
+  big.textContent = "";
+  big.append(...zeroHashNodes(m.current, m.zeros, "z", "miss"));
+  el("st-attempts").textContent = fmt(m.attempts);
+  el("st-time").textContent = fmtDur(m.elapsed);
+  const rate = currentRate(m);
+  el("st-rate").textContent = m.paused ? "0" : rate == null ? "…" : fmt(rate);
+  const best = el("st-best");
+  best.textContent = "";
+  if (m.best) best.append(...zeroHashNodes(m.best.hx.slice(0, 12) + "…", m.zeros, "z", null));
+  const p = 1 - Math.exp(-m.attempts / m.expected);
+  el("st-prob").textContent = Math.floor(p * 100) + " %";
+  let luck;
+  if (m.paused) luck = "Minería en pausa.";
+  else if (!m.unlimited && rate != null && m.elapsed > 3 && rate < RATE * 0.85)
+    luck = "Tu equipo llega a unos " + fmt(rate) + " hashes por segundo, por debajo del límite de " + fmt(RATE) + ". Por eso minará algo más lento que un equipo más potente.";
+  else if (m.unlimited && rate != null)
+    luck = "Sin límite: tu equipo está minando a su máxima velocidad, unos " + fmt(rate) + " hashes por segundo.";
+  else if (m.attempts <= m.expected)
+    luck = "Cada intento es independiente: ningún hash te acerca al correcto, así que solo queda seguir probando.";
+  else
+    luck = "Ya superaste el promedio de intentos. Así funciona el azar: a veces el nonce correcto aparece más tarde. Puedes quitar el límite de velocidad.";
+  el("luck").textContent = luck;
+  logBox.textContent = "";
+  m.log.forEach(([n, hx]) => {
+    logBox.append(h("div", null, h("span", { class: "n", text: fmt(n) }), h("span", { class: "hx" }, ...zeroHashNodes(hx, m.zeros, "z", null))));
+  });
+}
+
+function finishMining(found) {
+  const m = state.mining;
+  const b = Object.assign({}, m.block, {
+    nonce: found.nonce, hash: found.hash, zeros: m.zeros, attempts: m.attempts,
+    seconds: Math.max(0.01, Math.round(m.elapsed * 100) / 100), minedAt: formatNow(), unlimited: m.unlimitedUsed
+  });
+  state.chain.push(b);
+  state.phase = isComplete() ? "done" : "found";
+  save();
+  el("st-prob").textContent = "100 %";
+  el("st-time").textContent = fmtDur(b.seconds);
+  el("luck").textContent = "¡Encontrado! Este hash cumple el objetivo, así que el bloque queda registrado en la cadena.";
+  document.querySelectorAll(".console-btns .btn").forEach(btn => { btn.disabled = true; });
+  el("mine-pill").textContent = "Encontrado"; el("mine-pill").className = "pill ok";
+  el("found").hidden = false;
+  el("found-title").textContent = "¡Bloque #" + b.n + " minado y registrado!";
+  el("found-text").textContent = "El nonce " + fmt(b.nonce) + " produjo un hash que empieza con " + b.zeros + " ceros. Se necesitaron " +
+    fmt(b.attempts) + " intentos en " + fmtDur(b.seconds) + "; el promedio esperado era " + fmt(m.expected) + ".";
+  const fh = el("found-hash"); fh.textContent = ""; fh.append(...zeroHashNodes(b.hash, b.zeros, "zz", null));
+  el("btn-next").textContent = state.phase === "done" ? "Ver resumen y crear informe" : "Registrar el bloque #" + (b.n + 1);
+  refreshEditor(); renderTracker(); renderChain(); renderGrowth(); renderPanel();
+  setTimeout(() => el("found").scrollIntoView({ behavior: smooth(), block: "nearest" }), 50);
+}
+
+function resetConsole(text) {
+  el("found").hidden = true;
+  el("live").hidden = true;
+  el("idle-note").hidden = false;
+  el("idle-note").textContent = text;
+  el("mine-pill").textContent = state.phase === "done" ? "Completa" : "En espera";
+  el("mine-pill").className = "pill" + (state.phase === "done" ? " ok" : "");
+}
+el("btn-next").addEventListener("click", () => {
+  state.mining = null;
+  if (state.phase === "done") {
+    resetConsole("Ya minaste los 4 bloques. Revisa el resumen y crea tu informe en PDF.");
+    refreshEditor();
+    el("done-card").scrollIntoView({ behavior: smooth(), block: "start" });
+    return;
+  }
+  state.phase = "edit";
+  state.draft = emptyDraft();
+  buildOps();
+  resetConsole(IDLE_TEXT);
+  refreshEditor(); renderTracker(); renderPanel();
+  el("edit-card").scrollIntoView({ behavior: smooth(), block: "start" });
+  setTimeout(() => inputs["0de"].focus({ preventScroll: true }), reduceMotion ? 0 : 350);
+});
+
+/* ---------- Cadena ---------- */
+function renderChain() {
+  const box = el("chain");
+  box.textContent = "";
+  el("chain-pill").textContent = minedBlocks().length + " de " + PLAN.length + " minados";
+  state.chain.slice().reverse().forEach(b => {
+    const out = h("p", { class: "verify-out", "aria-live": "polite" });
+    out.hidden = true;
+    const verify = h("button", {
+      class: "btn ghost", type: "button", text: "Verificar", onclick: () => {
+        const t0 = performance.now();
+        const hx = sha256(blockInput(b, b.nonce));
+        const ms = performance.now() - t0;
+        const ok = hx === b.hash && leadingZeros(hx) >= b.zeros;
+        out.hidden = false;
+        out.classList.toggle("bad", !ok);
+        out.textContent = ok
+          ? "✓ Verificado con 1 solo cálculo en " + dec(ms, 2) + " ms: el hash coincide y empieza con " + b.zeros + " ceros."
+          : "✕ El hash recalculado no coincide: el bloque no es válido.";
+      }
+    });
+    const meta = b.genesis
+      ? "Bloque inicial provisto por la red · nonce " + fmt(b.nonce)
+      : "Nonce " + fmt(b.nonce) + " · " + fmt(b.attempts) + " intentos · " + fmtDur(b.seconds) + (b.unlimited ? " · sin límite" : "");
+    box.append(h("article", { class: "saved" },
+      h("div", { class: "saved-head" },
+        h("h3", { text: "Bloque #" + b.n + (b.genesis ? " · génesis" : "") }),
+        h("span", { class: "saved-meta", text: b.zeros + " ceros · creado el " + b.ts.replace(" ", " a las ") })),
+      h("div", { class: "saved-meta", text: b.ops.map(o => o.de + " → " + o.para + ": " + o.monto + " BTC").join("   ·   ") }),
+      h("code", { class: "hash" }, ...zeroHashNodes(b.hash, b.zeros, "zz", null)),
+      h("div", { class: "row-end" }, h("span", { class: "saved-meta", text: meta }), verify),
+      out));
+  });
+}
+
+/* ---------- Resumen final ---------- */
+function totals() {
+  const mb = minedBlocks();
+  return {
+    attempts: mb.reduce((a, b) => a + b.attempts, 0),
+    seconds: mb.reduce((a, b) => a + b.seconds, 0),
+    unlimited: mb.some(b => b.unlimited)
+  };
+}
+function renderDone() {
+  const t = totals();
+  const mb = minedBlocks();
+  el("done-text").textContent = "Registraste " + mb.length + " bloques con dificultad creciente. En total el minero probó " + fmt(t.attempts) +
+    " nonces en " + fmtDur(t.seconds) + " de minería.";
+  const rows = el("done-rows");
+  rows.textContent = "";
+  mb.forEach(b => rows.append(h("tr", null,
+    h("td", { text: "#" + b.n }), h("td", { class: "mono", text: b.zeros }), h("td", { text: fmt(b.attempts) }),
+    h("td", { text: fmt(expectedFor(b.zeros)) }), h("td", { text: fmtDur(b.seconds) }))));
+}
+
+/* ---------- Panel ---------- */
+function renderGrowth() {
+  const tb = el("growth");
+  tb.textContent = "";
+  PLAN.forEach((z, k) => {
+    const b = state.chain[k + 1];
+    tb.append(h("tr", { class: !b && k + 1 === nextIndex() ? "sel" : null },
+      h("td", { text: "#" + (k + 1) }), h("td", { class: "mono", text: String(z) }),
+      h("td", { text: fmt(expectedFor(z)) }), h("td", { text: b ? fmt(b.attempts) : "—" })));
+  });
+  el("rate-fact").textContent = "El minero prueba hasta " + fmt(RATE) + " hashes por segundo, si tu equipo lo permite. Con «Quitar límite», mina a la máxima velocidad de tu equipo. A " +
+    fmt(RATE) + " por segundo, " + PLAN[0] + " ceros toman menos de un segundo y " + PLAN[PLAN.length - 1] + " ceros, unos " + Math.round(expectedFor(PLAN[PLAN.length - 1]) / RATE / 60) + " minutos en promedio.";
+}
+function renderPanel() {
+  const panel = el("panel"), word = el("status-word"), text = el("status-text");
+  const m = state.mining;
+  const done = state.phase === "done";
+  panel.dataset.state = state.phase === "mining" ? "mining" : (state.phase === "found" || done) ? "found" : "idle";
+  if (state.phase === "mining") {
+    word.textContent = m.paused ? "Minería en pausa" : "Minando el bloque #" + m.block.n + "…";
+    text.textContent = "Buscando un hash que empiece con " + m.zeros + " ceros" + (m.unlimited ? ", sin límite de velocidad." : ". Cada intento cambia el nonce y produce un hash totalmente nuevo.");
+  } else if (done) {
+    word.textContent = "¡Cadena completa!";
+    text.textContent = "Minaste los 4 bloques. Ahora crea tu informe en PDF.";
+  } else if (state.phase === "found") {
+    const b = lastBlock();
+    word.textContent = "¡Bloque #" + b.n + " registrado!";
+    text.textContent = "Siguiente: el bloque #" + (b.n + 1) + ", que necesita " + zerosFor(b.n + 1) + " ceros, unas 16 veces más trabajo.";
+  } else {
+    const n = nextIndex();
+    word.textContent = n === 1 ? "Listo para empezar" : "Bloque #" + n + " de " + PLAN.length;
+    text.textContent = "Completa las operaciones del bloque #" + n + " y mínalo. Necesita un hash con " + zerosFor(n) + " ceros al inicio.";
+  }
+  el("btn-report").disabled = !done;
+  el("report-hint").hidden = done;
+}
+
+/* ---------- Reiniciar ---------- */
+const btnReset = el("btn-reset");
+let armed = false, armTimer = null;
+function disarm() { armed = false; clearTimeout(armTimer); btnReset.textContent = "Borrar cadena y empezar de nuevo"; btnReset.classList.remove("danger"); btnReset.classList.add("ghost"); }
+btnReset.addEventListener("click", () => {
+  if (!armed) {
+    armed = true; btnReset.textContent = "Pulsa otra vez para borrar la cadena"; btnReset.classList.remove("ghost"); btnReset.classList.add("danger");
+    armTimer = setTimeout(disarm, 4000); return;
+  }
+  disarm();
+  sendMiner({ type: "cancel" });
+  state.chain = [GENESIS];
+  state.mining = null;
+  state.phase = "edit";
+  state.draft = emptyDraft();
+  buildOps();
+  resetConsole(IDLE_TEXT);
+  save(); refreshEditor(); renderTracker(); renderChain(); renderGrowth(); renderPanel();
+  window.scrollTo({ top: 0, behavior: smooth() });
+});
+
+/* ---------- PDF ---------- */
+function pdfText(s) {
+  return String(s).replace(/…/g, "...").replace(/→/g, "->").replace(/[–—]/g, "-").replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/≈/g, "aprox.").normalize("NFC").replace(/[^\x00-\xFF]/g, "?");
+}
+function slugName(name) {
+  const s = name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return s || "estudiante";
+}
+function bigYears(sec) {
+  const years = sec / (365.25 * 86400);
+  if (years >= 1e9) return fmt(years / 1e9) + " mil millones de años";
+  if (years >= 1e6) return fmt(years / 1e6) + " millones de años";
+  return fmt(years) + " años";
+}
+
+function buildPDF(studentName, issuedAt) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  doc.setLineHeightFactor(1.35);
+  const PW = 210, PH = 297, M = 16, CW = PW - 2 * M, BOTTOM = PH - 18;
+  const C = {
+    ink: [23, 32, 49], soft: [88, 99, 119], rule: [211, 217, 227], head: [238, 241, 247],
+    accent: [39, 71, 184], accentBg: [226, 231, 250], ok: [27, 116, 72], okBg: [222, 241, 230], warnBg: [250, 237, 213]
+  };
+  const T = pdfText;
+  let y = M;
+  const tc = c => doc.setTextColor(c[0], c[1], c[2]);
+  const fc = c => doc.setFillColor(c[0], c[1], c[2]);
+  const dc = c => doc.setDrawColor(c[0], c[1], c[2]);
+  const font = (face, style, size) => { doc.setFont(face, style); doc.setFontSize(size); };
+  const lh = size => size * 0.3528 * 1.35;
+  const asc = size => size * 0.3528 * 0.82;
+  const ensure = hgt => { if (y + hgt > BOTTOM) { doc.addPage(); y = M; } };
+  const lines = (text, width, face, style, size) => { font(face, style, size); return doc.splitTextToSize(T(text), width); };
+  function para(text, o = {}) {
+    const size = o.size || 10, face = o.face || "helvetica", style = o.style || "normal", x = o.x || M, width = o.width || CW;
+    const ls = lines(text, width, face, style, size);
+    const hgt = ls.length * lh(size);
+    ensure(hgt);
+    tc(o.color || C.ink);
+    doc.text(ls, x, y + asc(size));
+    y += hgt + (o.gap == null ? 2 : o.gap);
+  }
+  function sectionTitle(text) {
+    ensure(32);
+    y += 3;
+    font("helvetica", "bold", 13); tc(C.accent);
+    doc.text(T(text), M, y + asc(13));
+    y += lh(13) + 1;
+    dc(C.accent); doc.setLineWidth(0.4); doc.line(M, y, M + CW, y);
+    y += 4;
+  }
+  function kvRows(rows, labelW) {
+    rows.forEach(([label, value]) => {
+      const vl = lines(value, CW - labelW, "helvetica", "bold", 10);
+      const hgt = Math.max(lh(10), vl.length * lh(10));
+      ensure(hgt);
+      font("helvetica", "normal", 9.5); tc(C.soft); doc.text(T(label), M, y + asc(10));
+      font("helvetica", "bold", 10); tc(C.ink); doc.text(vl, M + labelW, y + asc(10));
+      y += hgt + 1;
+    });
+  }
+  function box(text, bg, o = {}) {
+    const size = o.size || 10, padX = 4, padY = 3;
+    const ls = lines(text, CW - padX * 2, "helvetica", o.style || "normal", size);
+    const hgt = ls.length * lh(size) + padY * 2;
+    ensure(hgt);
+    fc(bg); doc.roundedRect(M, y, CW, hgt, 1.8, 1.8, "F");
+    font("helvetica", o.style || "normal", size); tc(C.ink);
+    doc.text(ls, M + padX, y + padY + asc(size));
+    y += hgt + 3;
+  }
+  function hashLine(hx, zeros, x, yy, size) {
+    font("courier", "bold", size); tc(C.ok);
+    const zs = hx.slice(0, Math.min(zeros, leadingZeros(hx)));
+    doc.text(zs, x, yy);
+    const w = doc.getTextWidth(zs);
+    font("courier", "normal", size); tc(C.ink);
+    doc.text(hx.slice(zs.length), x + w, yy);
+  }
+  function table(cols, rows) {
+    const size = 9, padX = 2, padY = 1.8, L = lh(size);
+    const head = () => {
+      const hh = lh(7.5) + padY * 2;
+      fc(C.head); doc.rect(M, y, CW, hh, "F");
+      font("helvetica", "bold", 7.5); tc(C.soft);
+      let x = M;
+      cols.forEach(c => {
+        const tx = T(c.title.toUpperCase());
+        if (c.right) doc.text(tx, x + c.w - padX, y + padY + asc(7.5), { align: "right" });
+        else doc.text(tx, x + padX, y + padY + asc(7.5));
+        x += c.w;
+      });
+      y += hh;
+    };
+    ensure(lh(7.5) + padY * 2 + L * 2 + padY * 2);
+    head();
+    rows.forEach(row => {
+      const cells = row.map((cell, ci) => lines(cell, cols[ci].w - padX * 2, cols[ci].mono ? "courier" : "helvetica", cols[ci].bold ? "bold" : "normal", size));
+      const rh = Math.max(...cells.map(c => c.length)) * L + padY * 2;
+      if (y + rh > BOTTOM) { doc.addPage(); y = M; head(); }
+      let x = M;
+      cells.forEach((ls, ci) => {
+        const c = cols[ci];
+        font(c.mono ? "courier" : "helvetica", c.bold ? "bold" : "normal", size); tc(C.ink);
+        if (c.right) doc.text(ls, x + c.w - padX, y + padY + asc(size), { align: "right" });
+        else doc.text(ls, x + padX, y + padY + asc(size));
+        x += c.w;
+      });
+      dc(C.rule); doc.setLineWidth(0.2); doc.line(M, y + rh, M + CW, y + rh);
+      y += rh;
+    });
+    y += 4;
+  }
+
+  const mb = minedBlocks();
+  const tot = totals();
+  const verified = state.chain.every((b, i) => sha256(blockInput(b, b.nonce)) === b.hash && leadingZeros(b.hash) >= b.zeros && (i === 0 || b.prev === state.chain[i - 1].hash));
+
+  /* Encabezado */
+  font("helvetica", "bold", 8); tc(C.accent);
+  doc.text(T("MINERÍA AVANZADA · PRUEBA DE TRABAJO CON SHA-256"), M, y + asc(8));
+  y += lh(8) + 1;
+  font("helvetica", "bold", 20); tc(C.ink);
+  doc.text(T("Informe de minería de bloques"), M, y + asc(20));
+  y += lh(20) + 2;
+  dc(C.rule); doc.setLineWidth(0.3); doc.line(M, y, M + CW, y);
+  y += 5;
+  kvRows([
+    ["Estudiante", studentName],
+    ["Fecha de emisión", issuedAt.replace(" ", " a las ")],
+    ["Bloques minados", mb.length + " bloques (del #1 al #" + mb.length + "), con " + PLAN.slice(0, -1).join(", ") + " y " + PLAN[PLAN.length - 1] + " ceros"],
+    ["Intentos totales", fmt(tot.attempts) + " nonces probados"],
+    ["Tiempo total de minería", fmtDur(tot.seconds) + (tot.unlimited ? " (se quitó el límite de velocidad)" : "")],
+    ["Límite del minero", fmt(RATE) + " hashes por segundo"],
+    ["Velocidad promedio lograda", fmt(tot.attempts / Math.max(0.01, tot.seconds)) + " hashes por segundo"]
+  ], 52);
+  y += 2;
+  box(verified
+    ? "Verificación: CADENA VÁLIDA. Al emitir este informe se recalculó el hash de cada bloque: todos coinciden, todos cumplen su número de ceros y cada bloque apunta al hash del anterior."
+    : "Verificación: la cadena presenta inconsistencias al recalcular los hashes.", verified ? C.okBg : C.warnBg, { style: "bold" });
+  para("Para registrar un bloque, el minero debe encontrar un nonce que haga que el hash del bloque empiece con cierta cantidad de ceros. No hay atajos: solo se puede probar nonce por nonce. Cada cero adicional multiplica por 16 el número de intentos esperado. Hash de cada bloque = SHA-256(número | fecha y hora | hash anterior | operación 1 | operación 2 | nonce).", { size: 9.5, color: C.soft, gap: 3 });
+
+  /* Sección 1: bloques */
+  sectionTitle("1. Bloques minados");
+  para("La cadena parte del bloque génesis #0, provisto por el simulador (hash " + GENESIS.hash.slice(0, 16) + "...). Los cuatro bloques siguientes fueron creados y minados por el estudiante.", { size: 9.5, color: C.soft, gap: 3 });
+  mb.forEach(b => {
+    const exp = expectedFor(b.zeros);
+    const ratio = b.attempts / exp;
+    const opLines = b.ops.map((o, k) => lines("Operación " + (k + 1) + ":  " + o.de + " -> " + o.para + "   " + o.monto + " BTC", CW / 2 - 6, "helvetica", "normal", 9.5));
+    const statsRows = [
+      ["Nonce encontrado", fmt(b.nonce)],
+      ["Intentos", fmt(b.attempts)],
+      ["Promedio esperado", fmt(exp)],
+      ["Real / esperado", dec(ratio, 2) + "x" + (ratio < 1 ? " (con suerte)" : " (sin suerte)")],
+      ["Tiempo de minería", fmtDur(b.seconds) + (b.unlimited ? " (sin límite)" : "")],
+      ["Velocidad promedio", fmt(b.attempts / Math.max(0.01, b.seconds)) + " h/s"]
+    ];
+    const leftH = lh(9) * 2 + 2 + opLines.reduce((a, l) => a + l.length * lh(9.5), 0);
+    const rightH = statsRows.length * lh(9);
+    const inner = lh(12.5) + 2 + Math.max(leftH, rightH) + 3 + (lh(7.5) + lh(8.5) + 1) * 2;
+    const bh = inner + 7;
+    ensure(bh + 4);
+    const top = y;
+    dc(C.ok); doc.setLineWidth(0.35); doc.roundedRect(M, top, CW, bh, 2, 2, "S");
+    let yy = top + 4;
+    font("helvetica", "bold", 12.5); tc(C.ink);
+    doc.text(T("Bloque #" + b.n), M + 4, yy + asc(12.5));
+    font("helvetica", "bold", 8);
+    const tag = T(b.zeros + " CEROS");
+    const tw = doc.getTextWidth(tag) + 5;
+    fc(C.okBg); doc.roundedRect(M + CW - 4 - tw, yy, tw, 5, 1.6, 1.6, "F");
+    tc(C.ok); doc.text(tag, M + CW - 4 - tw + 2.5, yy + 3.5);
+    yy += lh(12.5) + 2;
+    // izquierda: fechas y operaciones
+    let ly = yy;
+    font("helvetica", "normal", 9); tc(C.soft);
+    doc.text(T("Creado el " + b.ts.replace(" ", " a las ")), M + 4, ly + asc(9)); ly += lh(9);
+    doc.text(T("Registrado el " + (b.minedAt || b.ts).replace(" ", " a las ")), M + 4, ly + asc(9)); ly += lh(9) + 2;
+    opLines.forEach(ls => { font("helvetica", "normal", 9.5); tc(C.ink); doc.text(ls, M + 4, ly + asc(9.5)); ly += ls.length * lh(9.5); });
+    // derecha: estadísticas
+    let ry = yy;
+    const rx = M + CW / 2 + 2;
+    statsRows.forEach(([k, v]) => {
+      font("helvetica", "normal", 9); tc(C.soft); doc.text(T(k), rx, ry + asc(9));
+      font("helvetica", "bold", 9); tc(C.ink); doc.text(T(v), rx + 32, ry + asc(9));
+      ry += lh(9);
+    });
+    yy += Math.max(leftH, rightH) + 3;
+    [["Hash anterior", b.prev, 0], ["Hash del bloque", b.hash, b.zeros]].forEach(([lab, val, z]) => {
+      font("helvetica", "normal", 7.5); tc(C.soft); doc.text(T(lab.toUpperCase()), M + 4, yy + asc(7.5)); yy += lh(7.5);
+      hashLine(val, z, M + 4, yy + asc(8.5), 8.5); yy += lh(8.5) + 1;
+    });
+    y = top + bh + 4;
+  });
+
+  /* Sección 2: comparación */
+  sectionTitle("2. Comparación de la dificultad");
+  table([
+    { title: "Bloque", w: 20, bold: true }, { title: "Ceros", w: 18, right: true }, { title: "Intentos esperados", w: 36, right: true },
+    { title: "Intentos reales", w: 34, right: true }, { title: "Real / esperado", w: 32, right: true }, { title: "Tiempo", w: 38, right: true }
+  ], mb.map(b => ["#" + b.n, String(b.zeros), fmt(expectedFor(b.zeros)), fmt(b.attempts), dec(b.attempts / expectedFor(b.zeros), 2) + "x", fmtDur(b.seconds)]));
+
+  // gráfico de barras en escala logarítmica
+  const chartLeft = M + 30, chartW = CW - 30 - 36, maxLog = 8, rowH = 9;
+  const chartH = 8 + mb.length * rowH + 10;
+  ensure(chartH + 12);
+  font("helvetica", "bold", 10); tc(C.ink);
+  doc.text(T("Intentos reales por bloque (escala logarítmica)"), M, y + asc(10));
+  y += lh(10) + 2;
+  const top = y;
+  const ticks = ["1", "10", "100", "1 mil", "10 mil", "100 mil", "1 M", "10 M", "100 M"];
+  for (let t = 0; t <= maxLog; t++) {
+    const x = chartLeft + chartW * t / maxLog;
+    dc(C.rule); doc.setLineWidth(0.15); doc.line(x, top, x, top + mb.length * rowH);
+    font("helvetica", "normal", 7); tc(C.soft);
+    doc.text(T(ticks[t]), x, top + mb.length * rowH + 4, { align: "center" });
+  }
+  mb.forEach((b, i) => {
+    const yy = top + i * rowH + 1.5;
+    const w = Math.max(0.6, chartW * Math.log10(Math.max(1, b.attempts)) / maxLog);
+    fc(C.accent); doc.rect(chartLeft, yy, Math.min(w, chartW), rowH - 3, "F");
+    const ex = chartLeft + chartW * Math.log10(expectedFor(b.zeros)) / maxLog;
+    dc(C.ink); doc.setLineWidth(0.5); doc.line(ex, yy - 1, ex, yy + rowH - 2);
+    font("helvetica", "bold", 8.5); tc(C.ink);
+    doc.text(T("Bloque #" + b.n), M, yy + 4);
+    font("helvetica", "normal", 7.5); tc(C.soft);
+    doc.text(T(b.zeros + " ceros"), M, yy + 7.2);
+    font("helvetica", "normal", 8.5); tc(C.ink);
+    doc.text(T(fmt(b.attempts)), M + CW, yy + 4.6, { align: "right" });
+  });
+  y = top + mb.length * rowH + 7;
+  font("helvetica", "normal", 7.5); tc(C.soft);
+  doc.text(T("La barra muestra los intentos reales; la línea vertical negra marca el promedio esperado para esa cantidad de ceros."), M, y + asc(7.5));
+  y += lh(7.5) + 4;
+
+  /* Sección 3: conclusiones */
+  sectionTitle("3. Conclusiones");
+  const first = mb[0], last = mb[mb.length - 1];
+  const times = first && last ? last.attempts / Math.max(1, first.attempts) : 0;
+  const lucky = mb.filter(b => b.attempts < expectedFor(b.zeros)).map(b => "#" + b.n);
+  const concl = [
+    "El bloque #" + last.n + " (" + last.zeros + " ceros) necesitó " + fmt(times) + " veces más intentos que el bloque #" + first.n + " (" + first.zeros + " ceros). Con " + (last.zeros - first.zeros) + " ceros más, el trabajo esperado se multiplica por " + Array(last.zeros - first.zeros).fill("16").join(" x ") + " = " + fmt(expectedFor(last.zeros - first.zeros)) + ".",
+    lucky.length
+      ? (lucky.length === 1 ? "El bloque " + lucky[0] + " se encontró" : "Los bloques " + lucky.slice(0, -1).join(", ") + " y " + lucky[lucky.length - 1] + " se encontraron") +
+        " antes del promedio" + (lucky.length < mb.length ? " y los demás, después." : ".") + " La minería depende del azar: el promedio se cumple al repetir muchas veces, no en cada bloque."
+      : "Todos los bloques necesitaron más intentos que el promedio. La minería depende del azar: el promedio se cumple al repetir muchas veces, no en cada bloque.",
+    "Minar los " + mb.length + " bloques requirió " + fmt(tot.attempts) + " cálculos de hash, pero verificarlos todos tomó solo " + mb.length + ": uno por bloque. Esa asimetría es la base de la prueba de trabajo.",
+    "A la velocidad de este simulador, un bloque que exigiera unos 19 ceros, como en Bitcoin, tardaría en promedio unos " + bigYears(expectedFor(19) / RATE) + ". Por eso la red de Bitcoin reúne millones de máquinas especializadas."
+  ];
+  concl.forEach(c => {
+    const ls = lines(c, CW - 8, "helvetica", "normal", 10);
+    const hgt = ls.length * lh(10);
+    ensure(hgt + 2);
+    fc(C.accent); doc.circle(M + 1.6, y + 2.2, 0.9, "F");
+    tc(C.ink); doc.text(ls, M + 6, y + asc(10));
+    y += hgt + 2.5;
+  });
+
+  /* Pie */
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    dc(C.rule); doc.setLineWidth(0.2); doc.line(M, PH - 12, M + CW, PH - 12);
+    font("helvetica", "normal", 8); tc(C.soft);
+    doc.text(T("Minería Avanzada · " + studentName), M, PH - 8);
+    doc.text("Página " + p + " de " + total, M + CW, PH - 8, { align: "right" });
+  }
+  doc.setProperties({ title: T("Informe de minería - " + studentName), subject: "Minería de bloques con prueba de trabajo", author: T(studentName), creator: "Minería Avanzada" });
+  return doc;
+}
+
+/* ---------- Ventana del informe ---------- */
+const modal = el("modal"), form = el("report-form"), nameInput = el("student-name"), formMsg = el("form-msg");
+const modalOk = el("modal-ok"), modalCancel = el("modal-cancel");
+let busy = false, lastOpener = null;
+function setFormMsg(text, kind) { formMsg.textContent = text; formMsg.className = "form-msg" + (kind ? " " + kind : ""); }
+function openModal(ev) {
+  if (!isComplete()) return;
+  lastOpener = ev && ev.currentTarget;
+  try { nameInput.value = localStorage.getItem(NAME_KEY) || nameInput.value; } catch (e) { /* sin almacenamiento */ }
+  setFormMsg("", "");
+  modalOk.disabled = false;
+  modalCancel.textContent = "Cancelar";
+  modal.hidden = false;
+  setTimeout(() => { nameInput.focus(); nameInput.select(); }, 0);
+}
+function closeModal() { if (busy) return; modal.hidden = true; if (lastOpener) lastOpener.focus(); }
+el("btn-report").addEventListener("click", openModal);
+el("btn-report-main").addEventListener("click", openModal);
+modalCancel.addEventListener("click", closeModal);
+modal.addEventListener("click", ev => { if (ev.target === modal) closeModal(); });
+document.addEventListener("keydown", ev => {
+  if (modal.hidden) return;
+  if (ev.key === "Escape") { ev.preventDefault(); closeModal(); return; }
+  if (ev.key === "Tab") {
+    const items = [nameInput, modalCancel, modalOk].filter(x => !x.disabled);
+    const i = items.indexOf(document.activeElement);
+    if (ev.shiftKey && i <= 0) { ev.preventDefault(); items[items.length - 1].focus(); }
+    else if (!ev.shiftKey && i === items.length - 1) { ev.preventDefault(); items[0].focus(); }
+  }
+});
+form.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  if (busy) return;
+  const name = nameInput.value.trim().replace(/\s+/g, " ");
+  if (name.length < 3) { setFormMsg("Escribe tu nombre completo (al menos 3 letras).", "err"); nameInput.focus(); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF) { setFormMsg("No se pudo cargar el generador de PDF. Revisa tu conexión a internet y recarga la página.", "err"); return; }
+  try { localStorage.setItem(NAME_KEY, name); } catch (e) { /* sin almacenamiento */ }
+  busy = true; modalOk.disabled = true;
+  setFormMsg("Generando el PDF…", "");
+  const filename = "Informe-Mineria-Avanzada-" + slugName(name) + ".pdf";
+  try {
+    const doc = buildPDF(name, formatNow());
+    const host = window.claude && typeof window.claude.use === "function";
+    let how = "direct";
+    if (host) {
+      const downloads = await window.claude.use("downloads");
+      if (downloads) {
+        setFormMsg("Confirma la descarga en el aviso que aparece.", "");
+        await downloads.save({ filename, data: doc.output("blob") });
+        how = "saved";
+      } else { doc.save(filename); how = "fallback"; }
+    } else doc.save(filename);
+    setFormMsg(how === "fallback"
+      ? "Se generó " + filename + ". Si la descarga no empezó, abre la página desde su enlace de GitHub Pages."
+      : "Listo: se generó " + filename + ".", "ok");
+    modalCancel.textContent = "Cerrar";
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "declined") setFormMsg("Cancelaste la descarga. Puedes volver a intentarlo.", "err");
+    else if (code === "rate_limited") setFormMsg("Ya hay una descarga esperando confirmación. Respóndela e inténtalo de nuevo.", "err");
+    else setFormMsg("No se pudo descargar el PDF en esta vista. Ábrelo desde el enlace de GitHub Pages e inténtalo de nuevo.", "err");
+  } finally { busy = false; modalOk.disabled = false; }
+});
+
+/* ---------- Inicio ---------- */
+buildOps();
+resetConsole(isComplete() ? "Ya minaste los 4 bloques. Revisa el resumen y crea tu informe en PDF." : IDLE_TEXT);
+refreshEditor();
+renderTracker();
+renderChain();
+renderGrowth();
+renderPanel();
+save();
+</script>
+</body>
+</html>
